@@ -1,76 +1,78 @@
 package ru.kata.spring.boot_security.demo.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import ru.kata.spring.boot_security.demo.dao.UserDAO;
-import ru.kata.spring.boot_security.demo.entity.User;
+import ru.kata.spring.boot_security.demo.model.Role;
+import ru.kata.spring.boot_security.demo.model.User;
+import ru.kata.spring.boot_security.demo.repository.RoleRepository;
+import ru.kata.spring.boot_security.demo.repository.UserRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
-@Transactional
-public class UserServiceImpl implements UserService, UserDetailsService {
-    private final UserDAO userRepository;
-    private final PasswordEncoder passwordEncoder;
+public class UserServiceImpl implements UserService {
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     @Autowired
-    public UserServiceImpl(UserDAO userRepository, @Lazy PasswordEncoder passwordEncoder) {
+    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository) {
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.roleRepository = roleRepository;
     }
 
     @Override
     public void saveUser(User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userRepository.addUser(user);
+        userRepository.save(user);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<User> getAllUsers() {
-        return userRepository.getAllUsers();
+    public void addRole(Role role) {
+        roleRepository.save(role);
     }
 
     @Override
-    public void delete(Long userId) {
-        userRepository.removeUserById(userId);
+    public void updateUser(Long id, User user) {
+        User newUser = userRepository.getById(id);
+        newUser.setFirstName(user.getFirstName());
+        newUser.setLastName(user.getLastName());
+        newUser.setEmail(user.getEmail());
+        newUser.setUsername(user.getUsername());
+        newUser.setPassword(user.getPassword());
+        newUser.setRoles(user.getRoles());
+        userRepository.save(newUser);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public User findUserById(Long id) {
-        User user = userRepository.getUserById(id);
-        if (user != null) {
-            return user;
-        } else {
-            throw new UsernameNotFoundException("User with Id " + id + " not found");
-        }
+    public void removeUser(Long id) {
+        userRepository.deleteById(id);
     }
 
     @Override
-    public void updateUser(User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userRepository.updateUser(user);
+    public User getUserById(Long id) {
+        return userRepository.getById(id);
     }
 
     @Override
-    public User findUserByUsername(String username) {
-        return userRepository.findByUsername(username);
+    public List<User> getUsersList() {
+        return userRepository.findAll();
     }
 
     @Override
-    @Transactional(readOnly = true)
+    public List<Role> getRolesList() {
+        return roleRepository.findAll();
+    }
+
+    @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username);
-        if (user == null) {
-            throw new UsernameNotFoundException("User not found");
+        Optional<User> user = userRepository.findUserByUsername(username);
+        if (user.isEmpty()) {
+            throw new UsernameNotFoundException("User not found!");
         }
-        return user;
+        return user.get();
     }
+
 }
